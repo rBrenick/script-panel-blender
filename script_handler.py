@@ -11,15 +11,18 @@ class Script():
         self.relative_path = ""
         self.config_path = ""
 
+        self.is_favorite = None
+
     def update_from_dict(self, config):
         self.label = config.get("label", self.label)
         self.icon_name = config.get("icon_name", self.icon_name)
         self.icon_path = config.get("icon_path", self.icon_path)
+        self.is_favorite = config.get("is_favorite", self.is_favorite)
 
     def to_dict(self):
         out_dict = {}
 
-        if self.label:
+        if self.label and self.label != get_default_label(self.path):
             out_dict["label"] = self.label
 
         if self.icon_name:
@@ -27,6 +30,9 @@ class Script():
 
         if self.icon_path:
             out_dict["icon_path"] = self.icon_path
+        
+        if self.is_favorite is not None:
+            out_dict["is_favorite"] = self.is_favorite
 
         return out_dict
     
@@ -36,7 +42,12 @@ class Script():
             with open(self.config_path, "r") as fp:
                 configs = json.load(fp)
 
-        configs[self.relative_path] = self.to_dict()
+        config_dict = self.to_dict()
+        if config_dict:
+            configs[self.relative_path] = self.to_dict()
+        else:
+            # if nothing relevant is in the config, remove the entry entirely
+            configs.pop(self.relative_path)
 
         with open(self.config_path, "w") as fp:
             json.dump(configs, fp, indent=2)
@@ -95,8 +106,7 @@ class ScriptHandler():
 
                     script_inst = Script()
                     script_inst.path = script_file_path
-                    script_inst.label = os.path.splitext(script_file_name)[0]
-                    # script_inst.icon_name = "FILE_REFRESH"
+                    script_inst.label = get_default_label(script_file_path)
                     script_inst.relative_dir = display_relative_dir
                     script_inst.relative_path = script_relative_path
                     script_inst.config_path = config_path
@@ -111,6 +121,12 @@ class ScriptHandler():
         script : Script
         for script in self.scripts:
             if filter_text in script.label.lower():
+                yield script
+
+    def get_favorited_scripts(self):
+        script : Script
+        for script in self.scripts:
+            if script.is_favorite:
                 yield script
 
     def get_filtered_dirs(self, filter_text):
@@ -131,6 +147,10 @@ class ScriptHandler():
         for dir, state in self.expanded_dirs.items():
             if state:
                 yield dir
+
+
+def get_default_label(script_path):
+    return os.path.splitext(os.path.basename(script_path))[0]
 
 
 SCRIPT_HANDLER = ScriptHandler()

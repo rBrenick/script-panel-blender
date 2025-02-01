@@ -68,12 +68,20 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
         main_box = layout.box()
 
         HANDLER = script_handler.SCRIPT_HANDLER
+
+        for favorite_script in HANDLER.get_favorited_scripts():
+            self.draw_script_layout(main_box, favorite_script, panel_props.edit_mode_enabled)
+
         filtered_dirs = HANDLER.get_filtered_dirs(filter_text)
         expanded_dirs = HANDLER.get_all_relative_dirs() if filter_text else list(HANDLER.get_expanded_dirs())
         dir_boxes = self.create_dir_boxes(main_box, filtered_dirs, expanded_dirs)
         
         found_script = False
+        script : script_handler.Script
         for script in HANDLER.get_filtered_scripts(filter_text):
+            if script.is_favorite:
+                continue
+
             if script.relative_dir not in expanded_dirs:
                 continue
 
@@ -84,40 +92,51 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
             if not dir_box:
                 continue
             
-            operator_kwargs = {}
-
-            if script.icon_name:
-                operator_kwargs["icon"] = script.icon_name
-
-            if script.icon_path:
-                operator_kwargs["icon_value"] = icon_manager.get_icon(script.icon_path)
-
-            op_row = dir_box.row()
-            op = op_row.operator(
-                ScriptPanelExecuteScript.bl_idname,
-                text=script.label,
-                **operator_kwargs
-                )
-            op.target_script_path = script.path
-
-            if panel_props.edit_mode_enabled:
-                edit_group = script_edit_box.get_edit_box_of_script(script)
-
-                edit_op = op_row.operator(
-                    script_edit_box.ScriptPanelToggleScriptEditingBox.bl_idname,
-                    icon="DOWNARROW_HLT" if edit_group else "GREASEPENCIL",
-                    text="",
-                    emboss=True,
-                    )
-                edit_op.script_path = script.path
-                
-                script_edit_box.draw_script_edit_box(dir_box, edit_group)
+            self.draw_script_layout(dir_box, script, panel_props.edit_mode_enabled)
 
             found_script = True
 
         if not found_script and filter_text:
             main_box.label(text="Found no scripts")
 
+    def draw_script_layout(self, parent, script, in_edit_mode = False):
+        operator_kwargs = {}
+
+        if script.icon_name:
+            operator_kwargs["icon"] = script.icon_name
+
+        if script.icon_path:
+            operator_kwargs["icon_value"] = icon_manager.get_icon(script.icon_path)
+
+        op_row = parent.row()
+        op = op_row.operator(
+            ScriptPanelExecuteScript.bl_idname,
+            text=script.label,
+            **operator_kwargs
+            )
+        op.target_script_path = script.path
+
+        if in_edit_mode:
+            edit_group = script_edit_box.get_edit_box_of_script(script)
+            
+            edit_op = op_row.operator(
+                script_edit_box.ScriptPanelToggleScriptEditingBox.bl_idname,
+                icon="CANCEL_LARGE" if edit_group else "GREASEPENCIL",
+                text="",
+                emboss=True,
+                )
+            edit_op.script_path = script.path
+            
+            favorite_op = op_row.operator(
+                script_edit_box.ScriptPanelToggleFavorite.bl_idname,
+                icon="ORPHAN_DATA" if script.is_favorite else "HEART",
+                text="",
+                emboss=True,
+                )
+            favorite_op.script_path = script.path
+            
+            script_edit_box.draw_script_edit_box(parent, edit_group)
+    
     def create_dir_boxes(self, main_box, relative_dirs, expanded_dirs = list()):
         dir_boxes = {}
 
