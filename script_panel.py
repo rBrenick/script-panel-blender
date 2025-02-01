@@ -1,83 +1,10 @@
-import os
 import json
-import bpy
 import runpy
 
+import bpy
 
-class Script():
-    def __init__(self):
-        self.path = ""
-        self.icon = ""
-        self.label = ""
-        self.relative_dir = ""
-
-
-class ScriptHandler():
-    def __init__(self):
-        self.scripts = []
-        self.expanded_dirs = {}
-        self.populate_scripts()
-
-    def populate_scripts(self):
-        self.scripts = []
-        # don't reset expanded_dirs so we can keep the state when refreshing
-
-        root_paths = [
-            os.path.join(os.path.dirname(__file__), "example_dir"),
-            ]
-
-        for root_path in root_paths:
-            scripts_root_path = os.path.join(root_path, "scripts")
-            if not os.path.exists(scripts_root_path):
-                print(f"failed to find: {scripts_root_path}")
-                continue
-
-            root_path_name = os.path.basename(root_path)
-            if len(root_paths) == 1:
-                root_path_name = ""
-
-            for parent_dir, _, files in os.walk(scripts_root_path):
-                relative_dir = os.path.relpath(parent_dir, scripts_root_path).replace("\\", "/")
-
-                # calculate relative_dir for grouping display
-                default_expand_state = False
-                display_relative_dir = f"{root_path_name}/{relative_dir}" if root_path_name else relative_dir
-                if relative_dir == ".":
-                    display_relative_dir = root_path_name
-                    default_expand_state = True
-
-                # set default expand state
-                if not self.expanded_dirs.get(display_relative_dir):
-                    self.expanded_dirs[display_relative_dir] = default_expand_state
-
-                for script_file_name in files:
-                    script_file_path = os.path.join(parent_dir, script_file_name)
-
-                    script_inst = Script()
-                    script_inst.path = script_file_path
-                    script_inst.label = os.path.splitext(script_file_name)[0]
-                    script_inst.relative_dir = display_relative_dir
-                    self.scripts.append(script_inst)
-
-    def get_filtered_scripts(self, filter_text):
-        script : Script
-        for script in self.scripts:
-            if filter_text in script.label.lower():
-                yield script
-
-    def get_filtered_dirs(self, filter_text):
-        rel_dirs = set()
-        for script in self.get_filtered_scripts(filter_text):
-            rel_dirs.add(script.relative_dir)
-        return rel_dirs
-    
-    def get_all_relative_dirs(self):
-        return self.expanded_dirs.keys()
-
-    def get_expanded_dirs(self):
-        for dir, state in self.expanded_dirs.items():
-            if state:
-                yield dir
+from . import icon_manager
+from . import script_handler
 
 
 class ScriptPanelExecuteScript(bpy.types.Operator):
@@ -91,7 +18,7 @@ class ScriptPanelExecuteScript(bpy.types.Operator):
     def execute(self, context):
         runpy.run_path(self.target_script_path)
         return {"FINISHED"}
-    
+
 
 class ScriptPanelRefresh(bpy.types.Operator):
     bl_idname = "scriptpanel.refresh_scripts"
@@ -143,7 +70,6 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
         dir_boxes = self.create_dir_boxes(main_box, filtered_dirs, expanded_dirs)
         
         found_script = False
-        script: Script
         for script in SCRIPT_HANDLER.get_filtered_scripts(filter_text):
             if script.relative_dir not in expanded_dirs:
                 continue
@@ -155,8 +81,22 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
             if not dir_box:
                 continue
             
-            op = dir_box.operator(ScriptPanelExecuteScript.bl_idname, text=script.label)
+            operator_kwargs = {}
+
+            if script.icon_name:
+                operator_kwargs["icon"] = script.icon_name
+
+            if script.icon_path:
+                operator_kwargs["icon_value"] = icon_manager.get_icon(script.icon_path)
+
+            op_row = dir_box.column()
+            op = op_row.operator(
+                ScriptPanelExecuteScript.bl_idname,
+                text=script.label,
+                **operator_kwargs
+                )
             op.target_script_path = script.path
+
             found_script = True
 
         if not found_script and filter_text:
@@ -209,7 +149,8 @@ class ScriptPanelPropertyGroup(bpy.types.PropertyGroup):
     search_text: bpy.props.StringProperty(name="", options={'TEXTEDIT_UPDATE'})
 
 
-SCRIPT_HANDLER = ScriptHandler()
+SCRIPT_HANDLER = script_handler.ScriptHandler()
+
 
 CLASS_LIST = [
     ScriptPanelExecuteScript,
@@ -218,6 +159,7 @@ CLASS_LIST = [
 ]
 
 def register():
+    icon_manager.register()
     for cls in CLASS_LIST:
         bpy.utils.register_class(cls)
     bpy.utils.register_class(ScriptPanelPropertyGroup)
@@ -231,3 +173,4 @@ def unregister():
     bpy.utils.unregister_class(RENDER_PT_ScriptPanel)
     bpy.utils.unregister_class(ScriptPanelPropertyGroup)
     del bpy.types.Scene.script_panel_props
+    icon_manager.unregister()

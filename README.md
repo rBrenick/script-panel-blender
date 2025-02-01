@@ -2,4 +2,5 @@
 
 ![header image](docs/header_image.png)
 
-WIP tool
+WIP version [Script Panel](https://github.com/rBrenick/script-panel) for Blender
+
