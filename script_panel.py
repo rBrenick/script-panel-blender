@@ -1,10 +1,10 @@
-import json
 import runpy
 
 import bpy
 
 from . import icon_manager
 from . import script_handler
+from . import script_edit_box
 
 
 class ScriptPanelExecuteScript(bpy.types.Operator):
@@ -26,7 +26,7 @@ class ScriptPanelRefresh(bpy.types.Operator):
     bl_description = ""
 
     def execute(self, context):
-        SCRIPT_HANDLER.populate_scripts()
+        script_handler.SCRIPT_HANDLER.populate_scripts()
         return {"FINISHED"}
 
 
@@ -38,10 +38,10 @@ class ScriptPanelToggleExpandState(bpy.types.Operator):
     rel_dir: bpy.props.StringProperty()
 
     def execute(self, context):
-        current_state = SCRIPT_HANDLER.expanded_dirs.get(self.rel_dir, False)
-        SCRIPT_HANDLER.expanded_dirs[self.rel_dir] = not current_state
+        current_state = script_handler.SCRIPT_HANDLER.expanded_dirs.get(self.rel_dir, False)
+        script_handler.SCRIPT_HANDLER.expanded_dirs[self.rel_dir] = not current_state
         return {"FINISHED"}
-
+    
 
 class RENDER_PT_ScriptPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_ScriptPanel"
@@ -62,15 +62,18 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
         top_row.scale_y = 1.2
         top_row.prop(panel_props, "search_text", placeholder="search")
         top_row.operator(ScriptPanelRefresh.bl_idname, text="", icon="FILE_REFRESH")
+        top_row.prop(panel_props, "edit_mode_enabled", icon="GREASEPENCIL", text="")
         filter_text = panel_props.search_text.lower()
 
         main_box = layout.box()
-        filtered_dirs = SCRIPT_HANDLER.get_filtered_dirs(filter_text)
-        expanded_dirs = SCRIPT_HANDLER.get_all_relative_dirs() if filter_text else list(SCRIPT_HANDLER.get_expanded_dirs())
+
+        HANDLER = script_handler.SCRIPT_HANDLER
+        filtered_dirs = HANDLER.get_filtered_dirs(filter_text)
+        expanded_dirs = HANDLER.get_all_relative_dirs() if filter_text else list(HANDLER.get_expanded_dirs())
         dir_boxes = self.create_dir_boxes(main_box, filtered_dirs, expanded_dirs)
         
         found_script = False
-        for script in SCRIPT_HANDLER.get_filtered_scripts(filter_text):
+        for script in HANDLER.get_filtered_scripts(filter_text):
             if script.relative_dir not in expanded_dirs:
                 continue
 
@@ -89,13 +92,26 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
             if script.icon_path:
                 operator_kwargs["icon_value"] = icon_manager.get_icon(script.icon_path)
 
-            op_row = dir_box.column()
+            op_row = dir_box.row()
             op = op_row.operator(
                 ScriptPanelExecuteScript.bl_idname,
                 text=script.label,
                 **operator_kwargs
                 )
             op.target_script_path = script.path
+
+            if panel_props.edit_mode_enabled:
+                edit_group = script_edit_box.get_edit_box_of_script(script)
+
+                edit_op = op_row.operator(
+                    script_edit_box.ScriptPanelToggleScriptEditingBox.bl_idname,
+                    icon="DOWNARROW_HLT" if edit_group else "GREASEPENCIL",
+                    text="",
+                    emboss=True,
+                    )
+                edit_op.script_path = script.path
+                
+                script_edit_box.draw_script_edit_box(dir_box, edit_group)
 
             found_script = True
 
@@ -128,7 +144,7 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
                 if not dir_boxes.get(creation_path):
                     dir_box = parent_box.box()
 
-                    toggle_icon = "RIGHTARROW" if dir_is_collapsed else "DOWNARROW_HLT"
+                    toggle_icon = "FILE_FOLDER" if dir_is_collapsed else "DOWNARROW_HLT"
                     expand_toggle = dir_box.operator(
                         ScriptPanelToggleExpandState.bl_idname,
                         text=path_token,
@@ -147,9 +163,7 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
 
 class ScriptPanelPropertyGroup(bpy.types.PropertyGroup):
     search_text: bpy.props.StringProperty(name="", options={'TEXTEDIT_UPDATE'})
-
-
-SCRIPT_HANDLER = script_handler.ScriptHandler()
+    edit_mode_enabled: bpy.props.BoolProperty()
 
 
 CLASS_LIST = [
@@ -160,6 +174,7 @@ CLASS_LIST = [
 
 def register():
     icon_manager.register()
+    script_edit_box.register()
     for cls in CLASS_LIST:
         bpy.utils.register_class(cls)
     bpy.utils.register_class(ScriptPanelPropertyGroup)
@@ -173,4 +188,5 @@ def unregister():
     bpy.utils.unregister_class(RENDER_PT_ScriptPanel)
     bpy.utils.unregister_class(ScriptPanelPropertyGroup)
     del bpy.types.Scene.script_panel_props
+    script_edit_box.unregister()
     icon_manager.unregister()

@@ -36,6 +36,16 @@ def get_icon(icon_path):
         return None
 
 
+def get_default_icon_names():
+    return bpy.types.UILayout.bl_rna.functions["prop"].parameters["icon"].enum_items.keys()
+
+def get_default_icon_enum():
+    enum_items = []
+    for i, icon_name in enumerate(get_default_icon_names()):
+        enum_items.append((icon_name, icon_name, "", icon_name, i))
+    return enum_items
+
+
 def register():
     global __icon_manager__ 
     if __icon_manager__ is None:
