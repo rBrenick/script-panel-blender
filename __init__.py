@@ -10,10 +10,12 @@ bl_info = {
     "category": "Rigging",
 }
 
-from . import script_panel
+from . import script_panel, script_panel_preferences
 
 def register():
+    script_panel_preferences.register()
     script_panel.register()
 
 def unregister():
     script_panel.unregister()
+    script_panel_preferences.unregister()

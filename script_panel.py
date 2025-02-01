@@ -5,6 +5,7 @@ import bpy
 from . import icon_manager
 from . import script_handler
 from . import script_edit_box
+from . script_panel_preferences import get_preferences, draw_root_path_prefs
 
 
 class ScriptPanelExecuteScript(bpy.types.Operator):
@@ -26,7 +27,8 @@ class ScriptPanelRefresh(bpy.types.Operator):
     bl_description = ""
 
     def execute(self, context):
-        script_handler.SCRIPT_HANDLER.populate_scripts()
+        prefs = get_preferences()
+        script_handler.SCRIPT_HANDLER.populate_scripts(prefs.get_root_dir_paths())
         return {"FINISHED"}
 
 
@@ -66,6 +68,10 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
         filter_text = panel_props.search_text.lower()
 
         main_box = layout.box()
+
+        if panel_props.edit_mode_enabled:
+            draw_root_path_prefs(main_box)
+            main_box.separator(factor=2, type="LINE")
 
         HANDLER = script_handler.SCRIPT_HANDLER
 
@@ -199,6 +205,9 @@ def register():
     bpy.utils.register_class(ScriptPanelPropertyGroup)
     bpy.utils.register_class(RENDER_PT_ScriptPanel)
     bpy.types.Scene.script_panel_props = bpy.props.PointerProperty(type=ScriptPanelPropertyGroup)
+
+    prefs = get_preferences()
+    script_handler.SCRIPT_HANDLER.populate_scripts(prefs.get_root_dir_paths())
 
 
 def unregister():

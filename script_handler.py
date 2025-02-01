@@ -51,11 +51,11 @@ class Script():
         if not to_local and "is_favorite" in config_dict.keys():
             config_dict.pop("is_favorite")
 
-        if config_dict:
-            configs[self.relative_path] = config_dict
-        else:
+        if not config_dict and self.relative_path in configs.keys():
             # if nothing relevant is in the config, remove the entry entirely
             configs.pop(self.relative_path)
+        else:
+            configs[self.relative_path] = config_dict
 
         with open(config_path, "w") as fp:
             json.dump(configs, fp, indent=2)
@@ -65,15 +65,10 @@ class ScriptHandler():
     def __init__(self):
         self.scripts = []
         self.expanded_dirs = {}
-        self.populate_scripts()
 
-    def populate_scripts(self):
+    def populate_scripts(self, root_paths):
         self.scripts = []
-        # don't reset expanded_dirs so we can keep the state when refreshing
-
-        root_paths = [
-            os.path.join(os.path.dirname(__file__), "example_dir"),
-            ]
+        # don't reset self.expanded_dirs so we can keep the state when refreshing
 
         for root_path in root_paths:
             scripts_root_path = os.path.join(root_path, "scripts")
@@ -89,7 +84,10 @@ class ScriptHandler():
                     with open(config_path, "r") as fp:
                         combined_configs.update(json.load(fp))
 
-            root_path_name = os.path.basename(root_path)
+            # recalculate folder name since blender chucks an extra slash on a folder path
+            root_path_name = os.path.basename(os.path.dirname(scripts_root_path))
+
+            # if there's only one root path can skip a level of indendation in the UI
             if len(root_paths) == 1:
                 root_path_name = ""
 

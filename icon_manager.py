@@ -1,5 +1,6 @@
 import os
 import bpy
+from bpy.utils import previews
 
 __icon_manager__ = None
 
@@ -8,7 +9,7 @@ class IconManager():
 
     def __init__(self):
         self.registered_icons = {}
-        self.icons = bpy.utils.previews.new()
+        self.icons = previews.new()
 
     def register_icon(self, icon_path):
         icon_name = get_icon_name_from_path(icon_path)
@@ -16,7 +17,7 @@ class IconManager():
         self.registered_icons[icon_path] = icon_name
 
     def unregister(self):
-        bpy.utils.previews.remove(self.icons)
+        previews.remove(self.icons)
         self.icons = None
 
 
