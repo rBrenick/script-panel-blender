@@ -9,7 +9,7 @@ from . script_panel_preferences import get_preferences, draw_root_path_prefs
 
 
 class ScriptPanelExecuteScript(bpy.types.Operator):
-    bl_idname = "screen.script_panel_exec"
+    bl_idname = "wm.script_panel_exec"
     bl_label = "ExecuteScript"
     bl_description = ""
     bl_options = {'REGISTER', 'UNDO'}
