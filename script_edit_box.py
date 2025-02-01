@@ -3,6 +3,7 @@ import bpy
 from . import script_handler
 from . import icon_manager
 
+
 class ScriptPanelEditBox(bpy.types.PropertyGroup):
     script_path: bpy.props.StringProperty()
 
@@ -10,9 +11,8 @@ class ScriptPanelEditBox(bpy.types.PropertyGroup):
         name="Label",
         )
 
-    icon_enum : bpy.props.EnumProperty(
-        name="Icon",
-        items=icon_manager.get_default_icon_enum()
+    icon_name : bpy.props.StringProperty(
+        name="Icon Name",
         )
     
     icon_path: bpy.props.StringProperty(
@@ -23,7 +23,7 @@ class ScriptPanelEditBox(bpy.types.PropertyGroup):
     def to_config_dict(self):
         return {
             "label": self.label,
-            "icon_name": None if self.icon_enum == "NONE" else self.icon_enum,
+            "icon_name": self.icon_name,
             "icon_path": self.icon_path,
         }
 
@@ -31,7 +31,7 @@ class ScriptPanelEditBox(bpy.types.PropertyGroup):
 class ScriptPanelSaveEditingBox(bpy.types.Operator):
     bl_idname = "scriptpanel.save_script_button_editing"
     bl_label = "Save"
-    bl_description = ""
+    bl_description = "Save display changes to a local or shared config file"
 
     script_path: bpy.props.StringProperty()
 
@@ -87,8 +87,7 @@ class ScriptPanelToggleScriptEditingBox(bpy.types.Operator):
         new_box.script_path = self.script_path
 
         new_box.label = script.label
-        if script.icon_name:
-            new_box.icon_enum = script.icon_name
+        new_box.icon_name = script.icon_name
         new_box.icon_path = script.icon_path
 
         return {"FINISHED"}
@@ -108,6 +107,31 @@ class ScriptPanelToggleFavorite(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class IconSearchPopup(bpy.types.Operator):
+    bl_idname = "script_panel.icon_search_popup"
+    bl_label = "Icon Search"
+    bl_property = "icon_enum"
+
+    icon_enum: bpy.props.EnumProperty(
+        name="Objects",
+        description="",
+        items=icon_manager.get_default_icon_enum(),
+        )
+    
+    script_path: bpy.props.StringProperty()
+
+    def execute(self, context):
+        self.report({'INFO'}, "You've selected: %s" % self.icon_enum)
+        edit_box : ScriptPanelEditBox = get_edit_box_of_script_path(self.script_path)
+        edit_box.icon_name = self.icon_enum
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        wm.invoke_search_popup(self)
+        return {'FINISHED'}
+
+
 def get_edit_box_of_script(script):
     return get_edit_box_of_script_path(script.path)
 
@@ -125,26 +149,35 @@ def draw_script_edit_box(parent, edit_props : ScriptPanelEditBox):
     box = parent.box()
     box.label(text=edit_props.script_path.split("\\")[-1])
     box.prop(edit_props, "label")
-    box.prop(edit_props, "icon_enum")
+
+    icon_row = box.row()
+    icon_row.prop(edit_props, "icon_name")
+    search_popup = icon_row.operator(
+        IconSearchPopup.bl_idname,
+        icon="VIEWZOOM",
+        text="",
+        )
+    search_popup.script_path = edit_props.script_path
+
     box.prop(edit_props, "icon_path")
     
     save_row = box.row()
     save_row.scale_y = 2
     save_shared = save_row.operator(
         ScriptPanelSaveEditingBox.bl_idname,
-        icon="FILE_TICK",
-        text="Save Shared",
+        icon="INTERNET",
+        text="Shared Save",
         )
     save_shared.to_local = False
     save_shared.script_path = edit_props.script_path
 
-    save_local = save_row.operator(
+    save_local_op = save_row.operator(
         ScriptPanelSaveEditingBox.bl_idname,
         icon="FILE_TICK",
-        text="Save Local",
+        text="Local Save",
         )
-    save_local.to_local = True
-    save_local.script_path = edit_props.script_path
+    save_local_op.to_local = True
+    save_local_op.script_path = edit_props.script_path
 
     box.separator()
 
@@ -154,6 +187,7 @@ CLASSES = (
     ScriptPanelToggleScriptEditingBox,
     ScriptPanelSaveEditingBox,
     ScriptPanelToggleFavorite,
+    IconSearchPopup,
 )
 
 def register():

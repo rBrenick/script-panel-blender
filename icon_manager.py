@@ -1,5 +1,5 @@
 import os
-import bpy.utils.previews
+import bpy
 
 __icon_manager__ = None
 
@@ -38,6 +38,7 @@ def get_icon(icon_path):
 
 def get_default_icon_names():
     return bpy.types.UILayout.bl_rna.functions["prop"].parameters["icon"].enum_items.keys()
+
 
 def get_default_icon_enum():
     enum_items = []
