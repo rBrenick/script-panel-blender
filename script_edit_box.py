@@ -35,6 +35,8 @@ class ScriptPanelSaveEditingBox(bpy.types.Operator):
 
     script_path: bpy.props.StringProperty()
 
+    to_local : bpy.props.BoolProperty()
+
     def execute(self, context):
         script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_from_path(self.script_path)
 
@@ -49,7 +51,7 @@ class ScriptPanelSaveEditingBox(bpy.types.Operator):
         if found_idx is not None:
             box : ScriptPanelEditBox = edit_boxes[found_idx]
             script.update_from_dict(box.to_config_dict())
-            script.save_to_config_file()
+            script.save_to_config(to_local=self.to_local)
             edit_boxes.remove(found_idx)
             return {"FINISHED"}
         
@@ -102,7 +104,7 @@ class ScriptPanelToggleFavorite(bpy.types.Operator):
     def execute(self, context):
         script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_from_path(self.script_path)
         script.is_favorite = None if script.is_favorite else True
-        script.save_to_config_file()
+        script.save_to_config(to_local=True)
         return {"FINISHED"}
 
 
@@ -128,12 +130,21 @@ def draw_script_edit_box(parent, edit_props : ScriptPanelEditBox):
     
     save_row = box.row()
     save_row.scale_y = 2
-    save_op = save_row.operator(
+    save_shared = save_row.operator(
         ScriptPanelSaveEditingBox.bl_idname,
         icon="FILE_TICK",
-        text="Save",
+        text="Save Shared",
         )
-    save_op.script_path = edit_props.script_path
+    save_shared.to_local = False
+    save_shared.script_path = edit_props.script_path
+
+    save_local = save_row.operator(
+        ScriptPanelSaveEditingBox.bl_idname,
+        icon="FILE_TICK",
+        text="Save Local",
+        )
+    save_local.to_local = True
+    save_local.script_path = edit_props.script_path
 
     box.separator()
 

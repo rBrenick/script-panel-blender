@@ -9,7 +9,8 @@ class Script():
         self.icon_path = ""
         self.relative_dir = ""
         self.relative_path = ""
-        self.config_path = ""
+        self.local_config_path = ""
+        self.shared_config_path = ""
 
         self.is_favorite = None
 
@@ -36,20 +37,27 @@ class Script():
 
         return out_dict
     
-    def save_to_config_file(self):
+    def save_to_config(self, to_local):
+        config_path = self.local_config_path if to_local else self.shared_config_path
+
         configs = {}
-        if os.path.exists(self.config_path):
-            with open(self.config_path, "r") as fp:
+        if os.path.exists(config_path):
+            with open(config_path, "r") as fp:
                 configs = json.load(fp)
 
         config_dict = self.to_dict()
+
+        # ensure we don't accidentally save favorites to shared config
+        if not to_local and "is_favorite" in config_dict.keys():
+            config_dict.pop("is_favorite")
+
         if config_dict:
-            configs[self.relative_path] = self.to_dict()
+            configs[self.relative_path] = config_dict
         else:
             # if nothing relevant is in the config, remove the entry entirely
             configs.pop(self.relative_path)
 
-        with open(self.config_path, "w") as fp:
+        with open(config_path, "w") as fp:
             json.dump(configs, fp, indent=2)
 
 
@@ -73,11 +81,13 @@ class ScriptHandler():
                 print(f"failed to find: {scripts_root_path}")
                 continue
 
-            config_path = os.path.join(root_path, "config.json")
-            configs = {}
-            if os.path.exists(config_path):
-                with open(config_path, "r") as fp:
-                    configs = json.load(fp)
+            shared_config_path = os.path.join(root_path, "shared_config.json")
+            local_config_path = os.path.join(root_path, "local_config.json")
+            combined_configs = {}
+            for config_path in [shared_config_path, local_config_path]:
+                if os.path.exists(config_path):
+                    with open(config_path, "r") as fp:
+                        combined_configs.update(json.load(fp))
 
             root_path_name = os.path.basename(root_path)
             if len(root_paths) == 1:
@@ -109,10 +119,11 @@ class ScriptHandler():
                     script_inst.label = get_default_label(script_file_path)
                     script_inst.relative_dir = display_relative_dir
                     script_inst.relative_path = script_relative_path
-                    script_inst.config_path = config_path
+                    script_inst.shared_config_path = shared_config_path
+                    script_inst.local_config_path = local_config_path
 
                     # update any extra settings that have been saved in a config
-                    script_config = configs.get(script_relative_path, {})
+                    script_config = combined_configs.get(script_relative_path, {})
                     script_inst.update_from_dict(script_config)
 
                     self.scripts.append(script_inst)
