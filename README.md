@@ -2,22 +2,33 @@
 
 [Script Panel](https://github.com/rBrenick/script-panel) rewritten from the ground up for Blender.
 
+## Example UI
 ![header image](docs/header_image.png)
 
 Designed to be used in a studio environment for sharing simple scripts between artists. Any python files added to one of the defined root paths automatically shows up as a button in the UI.
 
 
-Button customization options:
-- Button label
-- Search and pick from existing blender icon
-    - Or set a custom icon .png path
-- Tooltips
-- Favoriting
-- Save changes to a shared .json file (or as a local override .json)
-
-
-The local .json changes are applied on top of the shared .json.
-
-
 Inspiration from [brave rabbits' toolShelf](https://www.braverabbit.com/braverabbit/tools/toolshelf/) but with a slightly different flavor to it.
+
+
+## Button customization options
+
+![button configuration options](docs/configuration_options_button.png)
+
+#### Icons
+
+- Search and pick from existing blender icons
+- Or make your own .png to use
+
+### Configs
+The button customizations can be saved to a `shared_config.json` or `local_config.json`
+
+- `shared_config` is meant to be distributed to everyone.
+
+- `local_config` is applied on top of the shared config. Meant for more opionated customization.
+
+
+## General customization options
+
+![configuration options](docs/configuration_options_general.png)
 
