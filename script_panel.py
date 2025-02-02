@@ -18,7 +18,7 @@ def refresh_script_handler():
 class ScriptPanelExecuteScript(bpy.types.Operator):
     bl_idname = "wm.script_panel_exec"
     bl_label = "ExecuteScript"
-    bl_description = ""
+    bl_description = "Execute script"
     bl_options = {'REGISTER', 'UNDO'}
 
     target_script_path: bpy.props.StringProperty()
@@ -26,7 +26,7 @@ class ScriptPanelExecuteScript(bpy.types.Operator):
     @classmethod
     def description(cls, context, properties):
         script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_from_path(properties.target_script_path)
-        return script.tooltip
+        return f"{script.label} - {script.tooltip}"
     
     def execute(self, context):
         runpy.run_path(self.target_script_path)
@@ -36,7 +36,7 @@ class ScriptPanelExecuteScript(bpy.types.Operator):
 class ScriptPanelRefresh(bpy.types.Operator):
     bl_idname = "scriptpanel.refresh_scripts"
     bl_label = "Refresh ScriptPanel scripts"
-    bl_description = ""
+    bl_description = "Refresh from disk"
 
     def execute(self, context):
         refresh_script_handler()
@@ -45,8 +45,8 @@ class ScriptPanelRefresh(bpy.types.Operator):
 
 class ScriptPanelToggleExpandState(bpy.types.Operator):
     bl_idname = "scriptpanel.toggle_dir_expand_state"
-    bl_label = "Toggle"
-    bl_description = ""
+    bl_label = "Collapse/Expand Folder"
+    bl_description = "Show/Hide folder content"
 
     rel_dir: bpy.props.StringProperty()
 
@@ -59,7 +59,7 @@ class ScriptPanelToggleExpandState(bpy.types.Operator):
 class ScriptPanelAddScript(bpy.types.Operator):
     bl_idname = "scriptpanel.add_script"
     bl_label = "Add Script"
-    bl_description = ""
+    bl_description = "Add a new python script to the folder"
 
     script_name: bpy.props.StringProperty(default="ScriptName")
     script_dir: bpy.props.StringProperty(subtype="DIR_PATH")
@@ -95,7 +95,7 @@ class ScriptPanelAddScript(bpy.types.Operator):
 class ScriptPanelOpenScript(bpy.types.Operator):
     bl_idname = "scriptpanel.open_script"
     bl_label = "Open Script"
-    bl_description = ""
+    bl_description = "Open the target script in the text editor"
 
     target_script_path: bpy.props.StringProperty()
 
@@ -107,7 +107,7 @@ class ScriptPanelOpenScript(bpy.types.Operator):
 class ScriptPanelOpenFolder(bpy.types.Operator):
     bl_idname = "scriptpanel.open_folder"
     bl_label = "Open Folder in Explorer"
-    bl_description = ""
+    bl_description = "Open an explorer window to this folder"
 
     dir_path: bpy.props.StringProperty()
 
@@ -179,7 +179,8 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
 
-        panel_props: ScriptPanelPropertyGroup = context.scene.script_panel_props 
+        panel_props: ScriptPanelPropertyGroup = context.scene.script_panel_props
+        prefs = get_preferences()
 
         top_row = layout.row()
         top_row.scale_y = 1.2
@@ -196,8 +197,27 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
 
         HANDLER = script_handler.SCRIPT_HANDLER
 
+        favorites_layout = main_box
+        if prefs.favorites_horizontal:
+            favorites_layout = main_box.row()
+
+        favorite_counter = 0
         for favorite_script in HANDLER.get_favorited_scripts():
-            self.draw_script_layout(main_box, favorite_script, panel_props.edit_mode_enabled)
+            
+            # add new row past a certain threshold
+            if favorite_counter >= prefs.horizontal_row_threshold:
+                favorites_layout = main_box.row()
+                favorite_counter = 0
+            
+            self.draw_script_layout(
+                favorite_script,
+                favorites_layout,
+                main_box,
+                panel_props.edit_mode_enabled,
+                prefs.favorites_horizontal,
+                prefs.favorites_show_label,
+                )
+            favorite_counter += 1
 
         filtered_dirs = HANDLER.get_filtered_dirs(filter_text)
         expanded_dirs = HANDLER.get_all_relative_dirs() if filter_text else list(HANDLER.get_expanded_dirs())
@@ -219,7 +239,12 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
             if not dir_box:
                 continue
             
-            self.draw_script_layout(dir_box, script, panel_props.edit_mode_enabled)
+            self.draw_script_layout(
+                script,
+                dir_box,
+                dir_box,
+                panel_props.edit_mode_enabled,
+                )
 
             found_script = True
 
@@ -240,19 +265,34 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
             main_box.label(text="No root paths found.")
             main_box.label(text="Enter 'Edit' mode in the top right to set them.")
         
-    def draw_script_layout(self, parent, script, in_edit_mode = False):
+    def draw_script_layout(
+            self,
+            script,
+            parent,
+            editbox_parent,
+            in_edit_mode = False,
+            horizontal_layout = False,
+            show_label = True,
+            ):
         operator_kwargs = {}
 
+        has_icon = False
         if script.icon_name:
             operator_kwargs["icon"] = script.icon_name
+            has_icon = True
 
         if script.icon_path:
             operator_kwargs["icon_value"] = icon_manager.get_icon(script.icon_path)
+            has_icon = True
+
+        # assign a default icon if there's nothing defined
+        if not has_icon and not show_label:
+            operator_kwargs["icon"] = "SCRIPT"
 
         op_row = parent.row()
         op = op_row.operator(
             ScriptPanelExecuteScript.bl_idname,
-            text=script.label,
+            text=script.label if show_label else "",
             **operator_kwargs
             )
         op.target_script_path = script.path
@@ -260,23 +300,24 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
         if in_edit_mode:
             edit_group = script_edit_box.get_edit_box_of_script(script)
             
-            edit_op = op_row.operator(
-                script_edit_box.ScriptPanelToggleScriptEditingBox.bl_idname,
-                icon="CANCEL_LARGE" if edit_group else "GREASEPENCIL",
-                text="",
-                emboss=True,
-                )
-            edit_op.script_path = script.path
+            if not horizontal_layout:
+                edit_op = op_row.operator(
+                    script_edit_box.ScriptPanelToggleScriptEditingBox.bl_idname,
+                    icon="CANCEL_LARGE" if edit_group else "GREASEPENCIL",
+                    text="",
+                    emboss=True,
+                    )
+                edit_op.script_path = script.path
+                
+                favorite_op = op_row.operator(
+                    script_edit_box.ScriptPanelToggleFavorite.bl_idname,
+                    icon="ORPHAN_DATA" if script.is_favorite else "HEART",
+                    text="",
+                    emboss=True,
+                    )
+                favorite_op.script_path = script.path
             
-            favorite_op = op_row.operator(
-                script_edit_box.ScriptPanelToggleFavorite.bl_idname,
-                icon="ORPHAN_DATA" if script.is_favorite else "HEART",
-                text="",
-                emboss=True,
-                )
-            favorite_op.script_path = script.path
-            
-            script_edit_box.draw_script_edit_box(parent, edit_group)
+            script_edit_box.draw_script_edit_box(editbox_parent, edit_group)
     
     def create_dir_boxes(self, main_box, relative_dirs, expanded_dirs = list()):
         dir_boxes = {}
@@ -344,8 +385,28 @@ class WM_MT_button_context(bpy.types.Menu):
 def script_panel_right_click(self, context):
     layout = self.layout
     if hasattr(context, "button_operator") and hasattr(context.button_operator, "target_script_path"):
-        open_script_op = layout.operator(ScriptPanelOpenScript.bl_idname)
-        open_script_op.target_script_path = getattr(context.button_operator, "target_script_path")
+        script_path = getattr(context.button_operator, "target_script_path")
+
+        edit_op = layout.operator(
+            script_edit_box.ScriptPanelToggleScriptEditingBox.bl_idname,
+            text="ScriptPanel - Customize Button",
+            icon="GREASEPENCIL",
+            )
+        edit_op.script_path = script_path
+
+        favorite_op = layout.operator(
+            script_edit_box.ScriptPanelToggleFavorite.bl_idname,
+            text="ScriptPanel - Toggle Favorite",
+            icon="HEART",
+            )
+        favorite_op.script_path = script_path
+
+        open_script_op = layout.operator(
+            ScriptPanelOpenScript.bl_idname,
+            text="ScriptPanel - Open Script",
+            icon="TEXT"
+            )
+        open_script_op.target_script_path = script_path
 
 
 def register():

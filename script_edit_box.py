@@ -65,13 +65,18 @@ class ScriptPanelSaveEditingBox(bpy.types.Operator):
 
 class ScriptPanelToggleScriptEditingBox(bpy.types.Operator):
     bl_idname = "scriptpanel.toggle_script_button_editing"
-    bl_label = "Toggle"
-    bl_description = ""
+    bl_label = "Toggle Edit Box"
+    bl_description = "Open layout for customizing this script button"
 
     script_path: bpy.props.StringProperty()
 
     def execute(self, context):
         script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_from_path(self.script_path)
+
+        # ensure editing mode is enabled, since the box doesn't show up otherwise
+        panel_props = context.scene.script_panel_props
+        if not panel_props.edit_mode_enabled:
+            panel_props.edit_mode_enabled = True
 
         edit_boxes = bpy.context.scene.script_panel_edits
 
@@ -101,8 +106,8 @@ class ScriptPanelToggleScriptEditingBox(bpy.types.Operator):
 
 class ScriptPanelToggleFavorite(bpy.types.Operator):
     bl_idname = "scriptpanel.toggle_script_favorite"
-    bl_label = "Toggle"
-    bl_description = ""
+    bl_label = "Toggle Favorite"
+    bl_description = "Favorited items show up at the top of the panel"
 
     script_path: bpy.props.StringProperty()
 

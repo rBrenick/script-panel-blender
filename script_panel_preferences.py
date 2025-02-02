@@ -38,6 +38,21 @@ class ScriptPanelPreferences(bpy.types.AddonPreferences):
         type=ScriptPanelRootPath,
         )
     
+    favorites_horizontal: bpy.props.BoolProperty(
+        name="Layout Horizontal"
+        )
+    
+    favorites_show_label: bpy.props.BoolProperty(
+        name="Show Labels",
+        default=True,
+        )
+
+    horizontal_row_threshold: bpy.props.IntProperty(
+        name="Row Threshold",
+        default = 3,
+        description="How many buttons in a row before jumping to the next one.",
+        )
+    
     def draw(self, context):
         layout = self.layout
         draw_root_path_prefs(layout)
@@ -53,16 +68,29 @@ class ScriptPanelPreferences(bpy.types.AddonPreferences):
 def draw_root_path_prefs(layout):
     prefs = get_preferences()
     
-    operator_row = layout.row()
-    operator_row.alignment = "RIGHT"
-    operator_row.operator(ScriptPanel_AddDirEntry.bl_idname, icon="PLUS", text="Add Root Dir")
+    favorites_header, favorites_body = layout.panel("Favorites")
+    favorites_header.label(text="Favorites")
+    if favorites_body:
+        favorites_body.prop(prefs, "favorites_show_label")
+        horizontal_row = favorites_body.row()
+        horizontal_row.prop(prefs, "favorites_horizontal", expand=True)
+        if prefs.favorites_horizontal:
+            horizontal_row.prop(prefs, "horizontal_row_threshold", expand=True)
+    
+    root_paths_header, root_paths_body = layout.panel("RootPaths")
+    root_paths_header.label(text="Root Dirs")
 
-    root_path : ScriptPanelRootPath
-    for i, root_path in enumerate(prefs.root_paths):
-        row = layout.row()
-        row.prop(root_path, "dir_path", text="")
-        remove_op = row.operator(ScriptPanel_RemoveDirEntry.bl_idname, icon="X", text="")
-        remove_op.idx = i
+    if root_paths_body:
+        operator_row = root_paths_body.row()
+        operator_row.alignment = "RIGHT"
+        operator_row.operator(ScriptPanel_AddDirEntry.bl_idname, icon="PLUS", text="Add Root Dir")
+
+        root_path : ScriptPanelRootPath
+        for i, root_path in enumerate(prefs.root_paths):
+            row = root_paths_body.row()
+            row.prop(root_path, "dir_path", text="")
+            remove_op = row.operator(ScriptPanel_RemoveDirEntry.bl_idname, icon="X", text="")
+            remove_op.idx = i
 
 
 def get_preferences() -> ScriptPanelPreferences: 
