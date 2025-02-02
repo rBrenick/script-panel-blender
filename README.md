@@ -11,7 +11,7 @@ Button customization options:
 - Button label
 - Search and pick from existing blender icon
     - Or set a custom icon .png path.
-- Favorited
+- Favorite scripts
 - Save changes to a shared .json file (or as a local override .json)
 
 
