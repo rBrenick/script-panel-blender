@@ -99,6 +99,19 @@ class ScriptPanelOpenScript(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class ScriptPanelOpenFolder(bpy.types.Operator):
+    bl_idname = "scriptpanel.open_folder"
+    bl_label = "Open Folder in Explorer"
+    bl_description = ""
+
+    dir_path: bpy.props.StringProperty()
+
+    def execute(self, context):
+        import webbrowser
+        webbrowser.open(self.dir_path)
+        return {"FINISHED"}
+
+
 def open_script(script_path):
     open_script_window()
 
@@ -139,8 +152,9 @@ def open_script_window():
         return
     
     current_windows = set(context.window_manager.windows)
-    if 'FINISHED' not in bpy.ops.wm.window_new():
-        return
+
+    # hijack a preference window since it's smaller by default
+    bpy.ops.screen.userpref_show()
 
     window, = set(context.window_manager.windows) - current_windows
     area = window.screen.areas[0]
@@ -208,10 +222,15 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
             main_box.label(text="Found no scripts")
         
         if HANDLER.primary_dir:
-            add_script_row = layout.row()
-            add_script_row.alignment = "RIGHT"
-            add_script_op : ScriptPanelAddScript = add_script_row.operator(ScriptPanelAddScript.bl_idname, icon="PLUS")
+            bottom_row = layout.row()
+            bottom_row.alignment = "RIGHT"
+
+            add_script_op : ScriptPanelAddScript = bottom_row.operator(ScriptPanelAddScript.bl_idname, icon="PLUS", text="")
             add_script_op.script_dir = f"{HANDLER.primary_dir}/scripts"
+
+            open_folder_op : ScriptPanelOpenFolder = bottom_row.operator(ScriptPanelOpenFolder.bl_idname, icon="FILE_FOLDER", text="")
+            open_folder_op.dir_path = f"{HANDLER.primary_dir}/scripts"
+
         else:
             main_box.label(text="No root paths found.")
             main_box.label(text="Enter 'Edit' mode in the top right to set them.")
@@ -308,6 +327,7 @@ CLASS_LIST = (
     ScriptPanelToggleExpandState,
     ScriptPanelAddScript,
     ScriptPanelOpenScript,
+    ScriptPanelOpenFolder,
 )
 
 
