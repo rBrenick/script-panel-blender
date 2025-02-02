@@ -276,8 +276,7 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
     def create_dir_boxes(self, main_box, relative_dirs, expanded_dirs = list()):
         dir_boxes = {}
 
-        sorted_dirs = reversed(sorted(relative_dirs, key=lambda x: x.count("/")))
-        for dir_path in sorted_dirs:
+        for dir_path in sorted(relative_dirs):
 
             parent_box = main_box
 
