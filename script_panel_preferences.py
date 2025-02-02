@@ -68,6 +68,7 @@ class ScriptPanelPreferences(bpy.types.AddonPreferences):
         name="Row Threshold",
         default = 3,
         description="How many buttons in a row before jumping to the next one.",
+        min=1,
         )
 
     def draw(self, context):
@@ -84,14 +85,15 @@ class ScriptPanelPreferences(bpy.types.AddonPreferences):
 
 def draw_preferences(layout):
     prefs = get_preferences()
+    has_favorites = len(script_handler.SCRIPT_HANDLER.favorite_scripts) > 0
     
     layout.prop(prefs, "button_scale")
 
     favorites_header, favorites_body = layout.panel("Favorites", default_closed=True)
     favorites_header.label(text="Favorites")
-    favorites_header.enabled = script_handler.SCRIPT_HANDLER.has_favorites
+    favorites_header.enabled = has_favorites
     if favorites_body:
-        favorites_body.enabled = script_handler.SCRIPT_HANDLER.has_favorites
+        favorites_body.enabled = has_favorites
         favorites_body.prop(prefs, "favorites_button_scale")
         horizontal_row = favorites_body.row()
         horizontal_row.prop(prefs, "favorites_horizontal", expand=True)

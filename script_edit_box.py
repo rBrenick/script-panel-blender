@@ -43,7 +43,7 @@ class ScriptPanelSaveEditingBox(bpy.types.Operator):
     to_local : bpy.props.BoolProperty()
 
     def execute(self, context):
-        script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_from_path(self.script_path)
+        script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_inst_from_path(self.script_path)
 
         edit_boxes = bpy.context.scene.script_panel_edits
 
@@ -71,7 +71,7 @@ class ScriptPanelToggleScriptEditingBox(bpy.types.Operator):
     script_path: bpy.props.StringProperty()
 
     def execute(self, context):
-        script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_from_path(self.script_path)
+        script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_inst_from_path(self.script_path)
 
         # ensure editing mode is enabled, since the box doesn't show up otherwise
         panel_props = context.scene.script_panel_props
@@ -112,12 +112,24 @@ class ScriptPanelToggleFavorite(bpy.types.Operator):
     script_path: bpy.props.StringProperty()
 
     def execute(self, context):
-        script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_from_path(self.script_path)
-        script.is_favorite = None if script.is_favorite else True
-        script.save_to_config(to_local=True)
+        script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_inst_from_path(self.script_path)
+        script.set_favorited_state(not script.is_favorited)
+        script_handler.SCRIPT_HANDLER.update_favorites()
+        return {"FINISHED"}
 
-        script_handler.SCRIPT_HANDLER.update_has_favorites_state()
 
+class ScriptPanelReorderFavorite(bpy.types.Operator):
+    bl_idname = "scriptpanel.reorder_favorite"
+    bl_label = "Reorder Favorite"
+    bl_description = "Move favorite around"
+
+    direction: bpy.props.IntProperty()
+    script_path: bpy.props.StringProperty()
+
+    def execute(self, context):
+        script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_inst_from_path(self.script_path)
+        script.reorder_in_favorites(self.direction)
+        script_handler.SCRIPT_HANDLER.update_favorites()
         return {"FINISHED"}
 
 
@@ -202,6 +214,7 @@ CLASSES = (
     ScriptPanelToggleScriptEditingBox,
     ScriptPanelSaveEditingBox,
     ScriptPanelToggleFavorite,
+    ScriptPanelReorderFavorite,
     IconSearchPopup,
 )
 

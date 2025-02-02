@@ -25,7 +25,7 @@ class ScriptPanelExecuteScript(bpy.types.Operator):
 
     @classmethod
     def description(cls, context, properties):
-        script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_from_path(properties.target_script_path)
+        script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_inst_from_path(properties.target_script_path)
         return f"{script.label} - {script.tooltip}"
     
     def execute(self, context):
@@ -201,13 +201,14 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
         if prefs.favorites_horizontal:
             favorites_layout = main_box.row()
 
-        favorite_counter = 0
+        fav_row_counter = 0
         for favorite_script in HANDLER.get_favorited_scripts():
             
             # add new row past a certain threshold
-            if favorite_counter >= prefs.horizontal_row_threshold:
-                favorites_layout = main_box.row()
-                favorite_counter = 0
+            if prefs.favorites_horizontal:
+                if fav_row_counter >= prefs.horizontal_row_threshold:
+                    favorites_layout = main_box.row()
+                    fav_row_counter = 0
             
             self.draw_script_layout(
                 favorite_script,
@@ -216,9 +217,10 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
                 in_edit_mode=panel_props.edit_mode_enabled,
                 horizontal_layout=prefs.favorites_horizontal,
                 show_label=prefs.favorites_show_label,
-                button_scale=prefs.favorites_button_scale
+                button_scale=prefs.favorites_button_scale,
+                in_favorites_panel=True
                 )
-            favorite_counter += 1
+            fav_row_counter += 1
 
         filtered_dirs = HANDLER.get_filtered_dirs(filter_text)
         expanded_dirs = HANDLER.get_all_relative_dirs() if filter_text else list(HANDLER.get_expanded_dirs())
@@ -227,7 +229,7 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
         found_script = False
         script : script_handler.Script
         for script in HANDLER.get_filtered_scripts(filter_text):
-            if script.is_favorite:
+            if script.is_favorited:
                 continue
 
             if script.relative_dir not in expanded_dirs:
@@ -269,13 +271,14 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
         
     def draw_script_layout(
             self,
-            script,
+            script : script_handler.Script,
             parent,
             editbox_parent,
             in_edit_mode = False,
             horizontal_layout = False,
             show_label = True,
             button_scale = 1,
+            in_favorites_panel = False,
             ):
         operator_kwargs = {}
 
@@ -294,7 +297,14 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
 
         op_row = parent.row()
         op_row.scale_y = button_scale
-        op = op_row.operator(
+        op_layout = op_row
+        
+        if in_favorites_panel:
+            op_col = op_row.column()
+            op_col.scale_x = button_scale
+            op_layout = op_col
+
+        op = op_layout.operator(
             ScriptPanelExecuteScript.bl_idname,
             text=script.label if show_label else "",
             **operator_kwargs
@@ -303,9 +313,11 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
 
         if in_edit_mode:
             edit_group = script_edit_box.get_edit_box_of_script(script)
-            
             if not horizontal_layout:
-                edit_op = op_row.operator(
+                edit_buttons = op_row.row()
+                edit_buttons.scale_x = 0.82
+
+                edit_op = edit_buttons.operator(
                     script_edit_box.ScriptPanelToggleScriptEditingBox.bl_idname,
                     icon="CANCEL_LARGE" if edit_group else "GREASEPENCIL",
                     text="",
@@ -313,14 +325,33 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
                     )
                 edit_op.script_path = script.path
                 
-                favorite_op = op_row.operator(
+                favorite_op = edit_buttons.operator(
                     script_edit_box.ScriptPanelToggleFavorite.bl_idname,
-                    icon="ORPHAN_DATA" if script.is_favorite else "HEART",
+                    icon="ORPHAN_DATA" if in_favorites_panel else "HEART",
                     text="",
                     emboss=True,
                     )
                 favorite_op.script_path = script.path
-            
+                
+                if in_favorites_panel:
+                    reorder_up: script_edit_box.ScriptPanelReorderFavorite = edit_buttons.operator(
+                        script_edit_box.ScriptPanelReorderFavorite.bl_idname,
+                        icon="EVENT_UP_ARROW",
+                        text="",
+                        emboss=True,
+                        )
+                    reorder_up.script_path = script.path
+                    reorder_up.direction = -1
+                    
+                    reorder_down: script_edit_box.ScriptPanelReorderFavorite = edit_buttons.operator(
+                        script_edit_box.ScriptPanelReorderFavorite.bl_idname,
+                        icon="EVENT_DOWN_ARROW",
+                        text="",
+                        emboss=True,
+                        )
+                    reorder_down.script_path = script.path
+                    reorder_down.direction = 1
+                
             script_edit_box.draw_script_edit_box(editbox_parent, edit_group)
     
     def create_dir_boxes(self, main_box, relative_dirs, expanded_dirs = list()):

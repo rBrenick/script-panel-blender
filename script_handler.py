@@ -13,14 +13,13 @@ class Script():
         self.local_config_path = ""
         self.shared_config_path = ""
 
-        self.is_favorite = None
+        self.is_favorited = False
 
     def update_from_dict(self, config):
         self.label = config.get("label", self.label)
         self.tooltip = config.get("tooltip", self.tooltip)
         self.icon_name = config.get("icon_name", self.icon_name)
         self.icon_path = config.get("icon_path", self.icon_path)
-        self.is_favorite = config.get("is_favorite", self.is_favorite)
 
     def to_dict(self):
         out_dict = {}
@@ -36,46 +35,104 @@ class Script():
 
         if self.icon_path:
             out_dict["icon_path"] = self.icon_path
-        
-        if self.is_favorite is not None:
-            out_dict["is_favorite"] = self.is_favorite
 
         return out_dict
-    
+        
+    def get_config_key(self):
+        return self.relative_path
+
     def save_to_config(self, to_local):
         config_path = self.local_config_path if to_local else self.shared_config_path
 
-        configs = {}
+        full_config_data = {}
         if os.path.exists(config_path):
             with open(config_path, "r") as fp:
-                configs = json.load(fp)
+                full_config_data = json.load(fp)
 
+        script_configs = full_config_data.get("script_configs", {})
         config_dict = self.to_dict()
 
-        # ensure we don't accidentally save favorites to shared config
-        if not to_local and "is_favorite" in config_dict.keys():
-            config_dict.pop("is_favorite")
-
-        if not config_dict and self.relative_path in configs.keys():
+        config_key = self.get_config_key()
+        if not config_dict and config_key in script_configs.keys():
             # if nothing relevant is in the config, remove the entry entirely
-            configs.pop(self.relative_path)
+            script_configs.pop(config_key)
         else:
-            configs[self.relative_path] = config_dict
+            script_configs[config_key] = config_dict
 
+        full_config_data["script_configs"] = script_configs
         with open(config_path, "w") as fp:
-            json.dump(configs, fp, indent=2)
+            json.dump(full_config_data, fp, indent=2)
 
+    def set_favorited_state(self, state=True):
+
+        favorites_list = self.get_local_favorites_list()
+
+        config_key = self.get_config_key()
+        if state:
+            if config_key not in favorites_list:
+                favorites_list.append(config_key)
+        else:
+            if config_key in favorites_list:
+                favorites_list.remove(config_key)
+
+        self.set_local_favorites_list(favorites_list)
+        self.is_favorited = state
+
+    def reorder_in_favorites(self, direction=1):
+        ckey = self.get_config_key()
+        favorites_list = self.get_local_favorites_list()
+        if ckey not in favorites_list:
+            return
+        
+        current_index = favorites_list.index(ckey)
+        new_index = current_index + direction
+
+        # wrap around logic
+        if new_index == -1:
+            new_index = len(favorites_list) - 1
+
+        if new_index == len(favorites_list):
+            new_index = 0
+
+        favorites_list.remove(ckey)
+        favorites_list.insert(new_index, ckey)
+
+        self.set_local_favorites_list(favorites_list)
+
+    def get_local_favorites_list(self):
+        return self.get_local_config_data().get("favorites", [])
+
+    def set_local_favorites_list(self, new_list):
+        full_config_data = self.get_local_config_data()
+        full_config_data["favorites"] = new_list
+
+        with open(self.local_config_path, "w") as fp:
+            json.dump(full_config_data, fp, indent=2)
+
+    def get_local_config_data(self):
+        config_path = self.local_config_path
+
+        full_config_data = {}
+        if os.path.exists(config_path):
+            with open(config_path, "r") as fp:
+                full_config_data = json.load(fp)
+
+        return full_config_data
+    
 
 class ScriptHandler():
     def __init__(self):
-        self.scripts = []
+        self.active_root_paths = []
+        self.scripts = {}
+        self.favorite_scripts = []
         self.expanded_dirs = {}
         self.primary_dir = None
-        self.has_favorites = False
 
     def populate_scripts(self, root_paths):
-        self.scripts = []
+        self.scripts = {}
+        self.favorite_scripts = []
         self.primary_dir = None
+        self.active_root_paths = root_paths
         # don't reset self.expanded_dirs so we can keep the state when refreshing
 
         for root_path in root_paths:
@@ -93,7 +150,8 @@ class ScriptHandler():
             for config_path in [shared_config_path, local_config_path]:
                 if os.path.exists(config_path):
                     with open(config_path, "r") as fp:
-                        combined_configs.update(json.load(fp))
+                        config_data = json.load(fp)
+                    merge_dicts(combined_configs, config_data)
 
             # recalculate folder name since blender chucks an extra slash on a folder path
             root_path_name = os.path.basename(os.path.dirname(scripts_root_path))
@@ -132,30 +190,39 @@ class ScriptHandler():
                     script_inst.local_config_path = local_config_path
 
                     # update any extra settings that have been saved in a config
-                    script_config = combined_configs.get(script_relative_path, {})
+                    script_config = combined_configs.get("script_configs", {}).get(script_inst.get_config_key(), {})
                     script_inst.update_from_dict(script_config)
 
-                    self.scripts.append(script_inst)
+                    self.scripts[script_file_path] = script_inst
 
-        self.update_has_favorites_state()
+        self.update_favorites()
 
     def get_filtered_scripts(self, filter_text):
         script : Script
-        for script in self.scripts:
+        for script in self.scripts.values():
             if filter_text in script.label.lower():
                 yield script
 
+    def update_favorites(self):
+        self.favorite_scripts = []
+        for root_path in self.active_root_paths:
+            local_config_path = os.path.join(root_path, "local_config.json")
+
+            if not os.path.exists(local_config_path):
+                continue
+
+            with open(local_config_path, "r") as fp:
+                config_json = json.load(fp)
+
+            # get script instances for each favorite
+            for config_favorite in config_json.get("favorites", []):
+                script = self.get_script_inst_from_config_key(config_favorite)
+                if script:
+                    script.is_favorited = True
+                    self.favorite_scripts.append(script)
+
     def get_favorited_scripts(self):
-        script : Script
-        for script in self.scripts:
-            if script.is_favorite:
-                yield script
-    
-    def update_has_favorites_state(self):
-        self.has_favorites = False
-        for _ in self.get_favorited_scripts():
-            self.has_favorites = True
-            break
+        return self.favorite_scripts
 
     def get_filtered_dirs(self, filter_text):
         rel_dirs = set()
@@ -166,9 +233,13 @@ class ScriptHandler():
     def get_all_relative_dirs(self):
         return self.expanded_dirs.keys()
 
-    def get_script_from_path(self, path):
-        for script in self.scripts:
-            if script.path == path:
+    def get_script_inst_from_path(self, path):
+        return self.scripts.get(path)
+
+    def get_script_inst_from_config_key(self, path):
+        script : Script
+        for script in self.scripts.values():
+            if script.get_config_key() == path:
                 return script
 
     def get_expanded_dirs(self):
@@ -176,6 +247,18 @@ class ScriptHandler():
             if state:
                 yield dir
 
+
+def merge_dicts(a, b):
+    for key, val in b.items():
+        if key not in a:
+            a[key] = val
+            continue
+
+        if isinstance(val, dict):
+            merge_dicts(a[key], val)
+        else:
+            a[key] = val
+    return a
 
 def get_default_label(script_path):
     return os.path.splitext(os.path.basename(script_path))[0]
