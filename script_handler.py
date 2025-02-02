@@ -65,12 +65,16 @@ class ScriptHandler():
     def __init__(self):
         self.scripts = []
         self.expanded_dirs = {}
+        self.primary_dir = None
 
     def populate_scripts(self, root_paths):
         self.scripts = []
         # don't reset self.expanded_dirs so we can keep the state when refreshing
 
         for root_path in root_paths:
+            if self.primary_dir is None:
+                self.primary_dir = root_path
+            
             scripts_root_path = os.path.join(root_path, "scripts")
             if not os.path.exists(scripts_root_path):
                 print(f"failed to find: {scripts_root_path}")

@@ -1,3 +1,5 @@
+import os
+import time
 import runpy
 
 import bpy
@@ -6,6 +8,11 @@ from . import icon_manager
 from . import script_handler
 from . import script_edit_box
 from . script_panel_preferences import get_preferences, draw_root_path_prefs
+
+
+def refresh_script_handler():
+    prefs = get_preferences()
+    script_handler.SCRIPT_HANDLER.populate_scripts(prefs.get_root_dir_paths())
 
 
 class ScriptPanelExecuteScript(bpy.types.Operator):
@@ -27,8 +34,7 @@ class ScriptPanelRefresh(bpy.types.Operator):
     bl_description = ""
 
     def execute(self, context):
-        prefs = get_preferences()
-        script_handler.SCRIPT_HANDLER.populate_scripts(prefs.get_root_dir_paths())
+        refresh_script_handler()
         return {"FINISHED"}
 
 
@@ -43,7 +49,103 @@ class ScriptPanelToggleExpandState(bpy.types.Operator):
         current_state = script_handler.SCRIPT_HANDLER.expanded_dirs.get(self.rel_dir, False)
         script_handler.SCRIPT_HANDLER.expanded_dirs[self.rel_dir] = not current_state
         return {"FINISHED"}
+
+
+class ScriptPanelAddScript(bpy.types.Operator):
+    bl_idname = "scriptpanel.add_script"
+    bl_label = "Add Script"
+    bl_description = ""
+
+    script_name: bpy.props.StringProperty(default="ScriptName")
+    script_dir: bpy.props.StringProperty(subtype="DIR_PATH")
+    auto_open: bpy.props.BoolProperty()
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+    def execute(self, context):
+        output_path = f"{self.script_dir}/{self.script_name}.py"
+
+        if os.path.exists(output_path):
+            self.report({'INFO'}, f"path already exists: {output_path}")
+            return {"FINISHED"}
+
+        default_file_content = []
+        default_file_content.append(f"# created by: {os.getenv('USERNAME')}\n")
+        default_file_content.append(f"# creation date: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        default_file_content.append("import bpy\n")
+        default_file_content.append("")
+
+        with open(output_path, "w") as fp:
+            fp.writelines(default_file_content)
+        
+        refresh_script_handler()
+
+        if self.auto_open:
+            open_script(output_path)
+
+        return {"FINISHED"}
+
+
+class ScriptPanelOpenScript(bpy.types.Operator):
+    bl_idname = "scriptpanel.open_script"
+    bl_label = "Open Script"
+    bl_description = ""
+
+    target_script_path: bpy.props.StringProperty()
+
+    def execute(self, context):
+        open_script(self.target_script_path)
+        return {"FINISHED"}
+
+
+def open_script(script_path):
+    open_script_window()
+
+    existing_text = None
+    for text in bpy.data.texts:
+        if text.filepath == script_path:
+            existing_text = text
+            break
     
+    if not existing_text:
+        bpy.ops.text.open(filepath=script_path, check_existing=True)
+        existing_text = bpy.data.texts.get(os.path.basename(script_path))
+    
+    if not existing_text:
+        print(f"could not find text block for file: {script_path}")
+        return
+    
+    text_editor_space = find_text_editor_space()
+    if text_editor_space:
+        text_editor_space.text = existing_text
+
+
+def find_text_editor_space():
+    for window in bpy.context.window_manager.windows:
+        for area in window.screen.areas:
+            if area.type != "TEXT_EDITOR":
+                continue
+
+            for space in area.spaces:
+                if hasattr(space, "text"):
+                    return space
+
+
+def open_script_window():
+    context = bpy.context
+
+    if find_text_editor_space():
+        return
+    
+    current_windows = set(context.window_manager.windows)
+    if 'FINISHED' not in bpy.ops.wm.window_new():
+        return
+
+    window, = set(context.window_manager.windows) - current_windows
+    area = window.screen.areas[0]
+    area.ui_type = 'TEXT_EDITOR'
+
 
 class RENDER_PT_ScriptPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_ScriptPanel"
@@ -104,6 +206,11 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
 
         if not found_script and filter_text:
             main_box.label(text="Found no scripts")
+        
+        add_script_row = layout.row()
+        add_script_row.alignment = "RIGHT"
+        add_script_op : ScriptPanelAddScript = add_script_row.operator(ScriptPanelAddScript.bl_idname, icon="PLUS", text="")
+        add_script_op.script_dir = f"{HANDLER.primary_dir}/scripts"
 
     def draw_script_layout(self, parent, script, in_edit_mode = False):
         operator_kwargs = {}
@@ -191,11 +298,27 @@ class ScriptPanelPropertyGroup(bpy.types.PropertyGroup):
     edit_mode_enabled: bpy.props.BoolProperty()
 
 
-CLASS_LIST = [
+CLASS_LIST = (
     ScriptPanelExecuteScript,
     ScriptPanelRefresh,
     ScriptPanelToggleExpandState,
-]
+    ScriptPanelAddScript,
+    ScriptPanelOpenScript,
+)
+
+
+class WM_MT_button_context(bpy.types.Menu):
+    bl_label = ""
+    def draw(self, context):
+        pass
+
+
+def script_panel_right_click(self, context):
+    layout = self.layout
+    if hasattr(context, "button_operator") and hasattr(context.button_operator, "target_script_path"):
+        open_script_op = layout.operator(ScriptPanelOpenScript.bl_idname)
+        open_script_op.target_script_path = getattr(context.button_operator, "target_script_path")
+
 
 def register():
     icon_manager.register()
@@ -206,11 +329,25 @@ def register():
     bpy.utils.register_class(RENDER_PT_ScriptPanel)
     bpy.types.Scene.script_panel_props = bpy.props.PointerProperty(type=ScriptPanelPropertyGroup)
 
-    prefs = get_preferences()
-    script_handler.SCRIPT_HANDLER.populate_scripts(prefs.get_root_dir_paths())
+    # custom right click https://blenderartists.org/t/add-operator-to-right-click-menu-for-operators/1249718
+    rcmenu = getattr(bpy.types, "WM_MT_button_context", None)
+    if rcmenu is None:
+        bpy.utils.register_class(WM_MT_button_context)
+        rcmenu = WM_MT_button_context
+    draw_funcs = rcmenu._dyn_ui_initialize()
+    draw_funcs.append(script_panel_right_click)
+
+    refresh_script_handler()
 
 
 def unregister():
+    rcmenu = getattr(bpy.types, "WM_MT_button_context", None)
+    if rcmenu is not None:
+        rcmenu = WM_MT_button_context
+        draw_funcs = rcmenu._dyn_ui_initialize()
+        draw_funcs.remove(script_panel_right_click)
+        bpy.utils.unregister_class(WM_MT_button_context)
+
     for cls in CLASS_LIST:
         bpy.utils.unregister_class(cls)
     bpy.utils.unregister_class(RENDER_PT_ScriptPanel)
