@@ -104,7 +104,7 @@ def open_script(script_path):
 
     existing_text = None
     for text in bpy.data.texts:
-        if text.filepath == script_path:
+        if text.filepath.replace("\\", "/") == script_path.replace("\\", "/"):
             existing_text = text
             break
     
