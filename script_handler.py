@@ -71,6 +71,7 @@ class ScriptHandler():
         self.scripts = []
         self.expanded_dirs = {}
         self.primary_dir = None
+        self.has_favorites = False
 
     def populate_scripts(self, root_paths):
         self.scripts = []
@@ -136,6 +137,8 @@ class ScriptHandler():
 
                     self.scripts.append(script_inst)
 
+        self.update_has_favorites_state()
+
     def get_filtered_scripts(self, filter_text):
         script : Script
         for script in self.scripts:
@@ -147,6 +150,12 @@ class ScriptHandler():
         for script in self.scripts:
             if script.is_favorite:
                 yield script
+    
+    def update_has_favorites_state(self):
+        self.has_favorites = False
+        for _ in self.get_favorited_scripts():
+            self.has_favorites = True
+            break
 
     def get_filtered_dirs(self, filter_text):
         rel_dirs = set()

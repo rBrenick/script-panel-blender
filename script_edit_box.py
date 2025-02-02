@@ -115,6 +115,9 @@ class ScriptPanelToggleFavorite(bpy.types.Operator):
         script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_from_path(self.script_path)
         script.is_favorite = None if script.is_favorite else True
         script.save_to_config(to_local=True)
+
+        script_handler.SCRIPT_HANDLER.update_has_favorites_state()
+
         return {"FINISHED"}
 
 

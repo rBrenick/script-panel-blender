@@ -7,7 +7,7 @@ import bpy
 from . import icon_manager
 from . import script_handler
 from . import script_edit_box
-from . script_panel_preferences import get_preferences, draw_root_path_prefs
+from . script_panel_preferences import get_preferences, draw_preferences
 
 
 def refresh_script_handler():
@@ -192,7 +192,7 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
         main_box = layout.box()
 
         if panel_props.edit_mode_enabled:
-            draw_root_path_prefs(main_box)
+            draw_preferences(main_box)
             main_box.separator(factor=2, type="LINE")
 
         HANDLER = script_handler.SCRIPT_HANDLER
@@ -213,9 +213,10 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
                 favorite_script,
                 favorites_layout,
                 main_box,
-                panel_props.edit_mode_enabled,
-                prefs.favorites_horizontal,
-                prefs.favorites_show_label,
+                in_edit_mode=panel_props.edit_mode_enabled,
+                horizontal_layout=prefs.favorites_horizontal,
+                show_label=prefs.favorites_show_label,
+                button_scale=prefs.favorites_button_scale
                 )
             favorite_counter += 1
 
@@ -243,7 +244,8 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
                 script,
                 dir_box,
                 dir_box,
-                panel_props.edit_mode_enabled,
+                in_edit_mode=panel_props.edit_mode_enabled,
+                button_scale=prefs.button_scale
                 )
 
             found_script = True
@@ -273,6 +275,7 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
             in_edit_mode = False,
             horizontal_layout = False,
             show_label = True,
+            button_scale = 1,
             ):
         operator_kwargs = {}
 
@@ -290,6 +293,7 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
             operator_kwargs["icon"] = "SCRIPT"
 
         op_row = parent.row()
+        op_row.scale_y = button_scale
         op = op_row.operator(
             ScriptPanelExecuteScript.bl_idname,
             text=script.label if show_label else "",

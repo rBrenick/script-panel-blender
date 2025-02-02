@@ -1,6 +1,7 @@
 import os
 import bpy
 
+from . import script_handler
 
 class ScriptPanelRootPath(bpy.types.PropertyGroup):
     dir_path: bpy.props.StringProperty(subtype="DIR_PATH")
@@ -32,30 +33,46 @@ class ScriptPanel_RemoveDirEntry(bpy.types.Operator):
 
 class ScriptPanelPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
-
+    
+    button_scale: bpy.props.FloatProperty(
+        name="Buttons Scale",
+        default = 1,
+        description="Scale of button row",
+        min=0.05,
+        )
+    
     root_paths: bpy.props.CollectionProperty(
         name="Root Paths",
         type=ScriptPanelRootPath,
         )
     
     favorites_horizontal: bpy.props.BoolProperty(
-        name="Layout Horizontal"
+        name="Layout Horizontal",
+        description="Put all the favorites in a single row, jumping to the next row at the threshold.\n(Disables the edit and favorite buttons. Functionallity can still be accessed via right click)",
         )
     
     favorites_show_label: bpy.props.BoolProperty(
         name="Show Labels",
         default=True,
+        description="Toggle button labels visibility",
         )
-
+    
+    favorites_button_scale: bpy.props.FloatProperty(
+        name="Favorites Buttons Scale",
+        default = 1,
+        description="Scale of button row",
+        min=0.05,
+        )
+    
     horizontal_row_threshold: bpy.props.IntProperty(
         name="Row Threshold",
         default = 3,
         description="How many buttons in a row before jumping to the next one.",
         )
-    
+
     def draw(self, context):
         layout = self.layout
-        draw_root_path_prefs(layout)
+        draw_preferences(layout)
 
     def get_root_dir_paths(self):
         root_path : ScriptPanelRootPath
@@ -65,19 +82,24 @@ class ScriptPanelPreferences(bpy.types.AddonPreferences):
         return output_paths
 
 
-def draw_root_path_prefs(layout):
+def draw_preferences(layout):
     prefs = get_preferences()
     
-    favorites_header, favorites_body = layout.panel("Favorites")
+    layout.prop(prefs, "button_scale")
+
+    favorites_header, favorites_body = layout.panel("Favorites", default_closed=True)
     favorites_header.label(text="Favorites")
+    favorites_header.enabled = script_handler.SCRIPT_HANDLER.has_favorites
     if favorites_body:
-        favorites_body.prop(prefs, "favorites_show_label")
+        favorites_body.enabled = script_handler.SCRIPT_HANDLER.has_favorites
+        favorites_body.prop(prefs, "favorites_button_scale")
         horizontal_row = favorites_body.row()
         horizontal_row.prop(prefs, "favorites_horizontal", expand=True)
         if prefs.favorites_horizontal:
             horizontal_row.prop(prefs, "horizontal_row_threshold", expand=True)
+        favorites_body.prop(prefs, "favorites_show_label")
     
-    root_paths_header, root_paths_body = layout.panel("RootPaths")
+    root_paths_header, root_paths_body = layout.panel("RootPaths", default_closed=True)
     root_paths_header.label(text="Root Dirs")
 
     if root_paths_body:
