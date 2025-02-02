@@ -69,6 +69,7 @@ class ScriptHandler():
 
     def populate_scripts(self, root_paths):
         self.scripts = []
+        self.primary_dir = None
         # don't reset self.expanded_dirs so we can keep the state when refreshing
 
         for root_path in root_paths:

@@ -58,7 +58,7 @@ class ScriptPanelAddScript(bpy.types.Operator):
 
     script_name: bpy.props.StringProperty(default="ScriptName")
     script_dir: bpy.props.StringProperty(subtype="DIR_PATH")
-    auto_open: bpy.props.BoolProperty()
+    auto_open: bpy.props.BoolProperty(default=True)
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
@@ -207,11 +207,15 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
         if not found_script and filter_text:
             main_box.label(text="Found no scripts")
         
-        add_script_row = layout.row()
-        add_script_row.alignment = "RIGHT"
-        add_script_op : ScriptPanelAddScript = add_script_row.operator(ScriptPanelAddScript.bl_idname, icon="PLUS", text="")
-        add_script_op.script_dir = f"{HANDLER.primary_dir}/scripts"
-
+        if HANDLER.primary_dir:
+            add_script_row = layout.row()
+            add_script_row.alignment = "RIGHT"
+            add_script_op : ScriptPanelAddScript = add_script_row.operator(ScriptPanelAddScript.bl_idname, icon="PLUS")
+            add_script_op.script_dir = f"{HANDLER.primary_dir}/scripts"
+        else:
+            main_box.label(text="No root paths found.")
+            main_box.label(text="Enter 'Edit' mode in the top right to set them.")
+        
     def draw_script_layout(self, parent, script, in_edit_mode = False):
         operator_kwargs = {}
 
