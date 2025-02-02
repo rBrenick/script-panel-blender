@@ -23,6 +23,11 @@ class ScriptPanelExecuteScript(bpy.types.Operator):
 
     target_script_path: bpy.props.StringProperty()
 
+    @classmethod
+    def description(cls, context, properties):
+        script : script_handler.Script = script_handler.SCRIPT_HANDLER.get_script_from_path(properties.target_script_path)
+        return script.tooltip
+    
     def execute(self, context):
         runpy.run_path(self.target_script_path)
         return {"FINISHED"}

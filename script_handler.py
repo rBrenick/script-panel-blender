@@ -5,6 +5,7 @@ class Script():
     def __init__(self):
         self.path = ""
         self.label = ""
+        self.tooltip = ""
         self.icon_name = ""
         self.icon_path = ""
         self.relative_dir = ""
@@ -16,6 +17,7 @@ class Script():
 
     def update_from_dict(self, config):
         self.label = config.get("label", self.label)
+        self.tooltip = config.get("tooltip", self.tooltip)
         self.icon_name = config.get("icon_name", self.icon_name)
         self.icon_path = config.get("icon_path", self.icon_path)
         self.is_favorite = config.get("is_favorite", self.is_favorite)
@@ -25,6 +27,9 @@ class Script():
 
         if self.label and self.label != get_default_label(self.path):
             out_dict["label"] = self.label
+
+        if self.tooltip:
+            out_dict["tooltip"] = self.tooltip
 
         if self.icon_name:
             out_dict["icon_name"] = self.icon_name

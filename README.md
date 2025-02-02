@@ -10,8 +10,9 @@ Designed to be used in a studio environment for sharing simple scripts between a
 Button customization options:
 - Button label
 - Search and pick from existing blender icon
-    - Or set a custom icon .png path.
-- Favorite scripts
+    - Or set a custom icon .png path
+- Tooltips
+- Favoriting
 - Save changes to a shared .json file (or as a local override .json)
 
 

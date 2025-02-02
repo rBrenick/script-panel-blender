@@ -10,6 +10,10 @@ class ScriptPanelEditBox(bpy.types.PropertyGroup):
     label: bpy.props.StringProperty(
         name="Label",
         )
+    
+    tooltip: bpy.props.StringProperty(
+        name="Tool tip",
+        )
 
     icon_name : bpy.props.StringProperty(
         name="Icon Name",
@@ -23,6 +27,7 @@ class ScriptPanelEditBox(bpy.types.PropertyGroup):
     def to_config_dict(self):
         return {
             "label": self.label,
+            "tooltip": self.tooltip,
             "icon_name": self.icon_name,
             "icon_path": self.icon_path,
         }
@@ -87,6 +92,7 @@ class ScriptPanelToggleScriptEditingBox(bpy.types.Operator):
         new_box.script_path = self.script_path
 
         new_box.label = script.label
+        new_box.tooltip = script.tooltip
         new_box.icon_name = script.icon_name
         new_box.icon_path = script.icon_path
 
@@ -149,6 +155,7 @@ def draw_script_edit_box(parent, edit_props : ScriptPanelEditBox):
     box = parent.box()
     box.label(text=edit_props.script_path.split("\\")[-1])
     box.prop(edit_props, "label")
+    box.prop(edit_props, "tooltip")
 
     icon_row = box.row()
     icon_row.prop(edit_props, "icon_name")
