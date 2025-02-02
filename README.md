@@ -15,7 +15,7 @@ Inspiration from [brave rabbits' toolShelf](https://www.braverabbit.com/braverab
 
 ![button configuration options](docs/configuration_options_button.png)
 
-#### Icons
+### Icons
 
 - Search and pick from existing blender icons
 - Or make your own .png to use
