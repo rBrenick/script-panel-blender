@@ -3,7 +3,8 @@ import bpy
 
 from . import script_handler
 
-class ScriptPanelRootPath(bpy.types.PropertyGroup):
+
+class ScriptPanel_RootPath(bpy.types.PropertyGroup):
     dir_path: bpy.props.StringProperty(subtype="DIR_PATH")
 
 
@@ -31,7 +32,7 @@ class ScriptPanel_RemoveDirEntry(bpy.types.Operator):
         return {'FINISHED'}
     
 
-class ScriptPanelPreferences(bpy.types.AddonPreferences):
+class ScriptPanel_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
     
     button_scale: bpy.props.FloatProperty(
@@ -43,10 +44,10 @@ class ScriptPanelPreferences(bpy.types.AddonPreferences):
     
     root_paths: bpy.props.CollectionProperty(
         name="Root Paths",
-        type=ScriptPanelRootPath,
+        type=ScriptPanel_RootPath,
         )
     
-    favorites_horizontal: bpy.props.BoolProperty(
+    favorites_layout_horizontal: bpy.props.BoolProperty(
         name="Layout Horizontal",
         description="Put all the favorites in a single row, jumping to the next row at the threshold.\n(Disables the edit and favorite buttons. Functionallity can still be accessed via right click)",
         )
@@ -64,7 +65,7 @@ class ScriptPanelPreferences(bpy.types.AddonPreferences):
         min=0.05,
         )
     
-    horizontal_row_threshold: bpy.props.IntProperty(
+    favorites_row_threshold: bpy.props.IntProperty(
         name="Row Threshold",
         default = 3,
         description="How many buttons in a row before jumping to the next one.",
@@ -76,7 +77,7 @@ class ScriptPanelPreferences(bpy.types.AddonPreferences):
         draw_preferences(layout)
 
     def get_root_dir_paths(self):
-        root_path : ScriptPanelRootPath
+        root_path : ScriptPanel_RootPath
         output_paths = []
         for root_path in self.root_paths:
             output_paths.append(root_path.dir_path)
@@ -85,7 +86,7 @@ class ScriptPanelPreferences(bpy.types.AddonPreferences):
 
 def draw_preferences(layout):
     prefs = get_preferences()
-    has_favorites = len(script_handler.SCRIPT_HANDLER.favorite_scripts) > 0
+    has_favorites = len(script_handler.instance.favorite_scripts) > 0
     
     layout.prop(prefs, "button_scale")
 
@@ -96,9 +97,9 @@ def draw_preferences(layout):
         favorites_body.enabled = has_favorites
         favorites_body.prop(prefs, "favorites_button_scale")
         horizontal_row = favorites_body.row()
-        horizontal_row.prop(prefs, "favorites_horizontal", expand=True)
-        if prefs.favorites_horizontal:
-            horizontal_row.prop(prefs, "horizontal_row_threshold", expand=True)
+        horizontal_row.prop(prefs, "favorites_layout_horizontal", expand=True)
+        if prefs.favorites_layout_horizontal:
+            horizontal_row.prop(prefs, "favorites_row_threshold", expand=True)
         favorites_body.prop(prefs, "favorites_show_label")
     
     root_paths_header, root_paths_body = layout.panel("RootPaths", default_closed=True)
@@ -109,7 +110,7 @@ def draw_preferences(layout):
         operator_row.alignment = "RIGHT"
         operator_row.operator(ScriptPanel_AddDirEntry.bl_idname, icon="PLUS", text="Add Root Dir")
 
-        root_path : ScriptPanelRootPath
+        root_path : ScriptPanel_RootPath
         for i, root_path in enumerate(prefs.root_paths):
             row = root_paths_body.row()
             row.prop(root_path, "dir_path", text="")
@@ -117,15 +118,15 @@ def draw_preferences(layout):
             remove_op.idx = i
 
 
-def get_preferences() -> ScriptPanelPreferences: 
+def get_preferences() -> ScriptPanel_Preferences: 
     return bpy.context.preferences.addons[__package__].preferences
 
 
 CLASS_LIST = (
-    ScriptPanelRootPath,
+    ScriptPanel_RootPath,
     ScriptPanel_AddDirEntry,
     ScriptPanel_RemoveDirEntry,
-    ScriptPanelPreferences,
+    ScriptPanel_Preferences,
 )
 
 
@@ -136,7 +137,7 @@ def register():
     # default prefs
     prefs = get_preferences()
     if len(prefs.root_paths) == 0:
-        item : ScriptPanelRootPath = prefs.root_paths.add()
+        item : ScriptPanel_RootPath = prefs.root_paths.add()
         item.dir_path = os.path.join(os.path.dirname(__file__), "example_dir")
 
 
