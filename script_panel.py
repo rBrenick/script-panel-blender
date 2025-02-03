@@ -192,8 +192,8 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
         main_box = layout.box()
 
         if panel_props.edit_mode_enabled:
-            draw_preferences(main_box)
-            main_box.separator(factor=2, type="LINE")
+            pref_box = main_box.box()
+            draw_preferences(pref_box)
 
         HANDLER = script_handler.SCRIPT_HANDLER
 
@@ -319,7 +319,7 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
 
                 edit_op = edit_buttons.operator(
                     script_edit_box.ScriptPanelToggleScriptEditingBox.bl_idname,
-                    icon="CANCEL_LARGE" if edit_group else "GREASEPENCIL",
+                    icon="CANCEL" if edit_group else "GREASEPENCIL",
                     text="",
                     emboss=True,
                     )
@@ -336,7 +336,7 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
                 if in_favorites_panel:
                     reorder_up: script_edit_box.ScriptPanelReorderFavorite = edit_buttons.operator(
                         script_edit_box.ScriptPanelReorderFavorite.bl_idname,
-                        icon="EVENT_UP_ARROW",
+                        icon="TRIA_UP",
                         text="",
                         emboss=True,
                         )
@@ -345,7 +345,7 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
                     
                     reorder_down: script_edit_box.ScriptPanelReorderFavorite = edit_buttons.operator(
                         script_edit_box.ScriptPanelReorderFavorite.bl_idname,
-                        icon="EVENT_DOWN_ARROW",
+                        icon="TRIA_DOWN",
                         text="",
                         emboss=True,
                         )

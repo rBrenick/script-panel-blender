@@ -192,7 +192,7 @@ def draw_script_edit_box(parent, edit_props : ScriptPanelEditBox):
     save_row.scale_y = 2
     save_shared = save_row.operator(
         ScriptPanelSaveEditingBox.bl_idname,
-        icon="INTERNET",
+        icon="URL",
         text="Shared Save",
         )
     save_shared.to_local = False
