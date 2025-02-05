@@ -2,6 +2,7 @@ import os
 import bpy
 
 from . import script_handler
+from . import script_panel_extension_system
 
 
 class ScriptPanel_RootPath(bpy.types.PropertyGroup):
@@ -137,8 +138,11 @@ def register():
     # default prefs
     prefs = get_preferences()
     if len(prefs.root_paths) == 0:
-        item : ScriptPanel_RootPath = prefs.root_paths.add()
-        item.dir_path = os.path.join(os.path.dirname(__file__), "example_dir")
+    
+        default_root_paths = script_panel_extension_system.instance.get_default_root_paths()
+        for root_path in default_root_paths:
+            item : ScriptPanel_RootPath = prefs.root_paths.add()
+            item.dir_path = root_path
 
 
 def unregister():
