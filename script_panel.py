@@ -7,13 +7,14 @@ import bpy
 from . import icon_manager
 from . import script_handler
 from . import script_edit_box
-from . script_panel_preferences import get_preferences, draw_preferences
+from . import script_panel_preferences
 from . import script_panel_logger
 
 log = script_panel_logger.get_logger()
 
+
 def refresh_script_handler():
-    prefs = get_preferences()
+    prefs = script_panel_preferences.get_preferences()
     script_handler.instance.populate_scripts(prefs.get_root_dir_paths())
 
 
@@ -182,7 +183,7 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
         layout = self.layout
 
         panel_props: ScriptPanel_SceneProperties = context.scene.script_panel_props
-        prefs = get_preferences()
+        prefs = script_panel_preferences.get_preferences()
 
         top_row = layout.row()
         top_row.scale_y = 1.2
@@ -195,7 +196,7 @@ class RENDER_PT_ScriptPanel(bpy.types.Panel):
 
         if panel_props.edit_mode_enabled:
             pref_box = main_box.box()
-            draw_preferences(pref_box)
+            script_panel_preferences.draw_preferences(pref_box)
 
         HANDLER = script_handler.instance
 
@@ -451,6 +452,7 @@ def script_panel_right_click(self, context):
 
 
 def register():
+    script_panel_preferences.register()
     icon_manager.register()
     script_edit_box.register()
 
@@ -485,3 +487,4 @@ def unregister():
 
     script_edit_box.unregister()
     icon_manager.unregister()
+    script_panel_preferences.unregister()

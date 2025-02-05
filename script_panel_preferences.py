@@ -139,7 +139,7 @@ def register():
     prefs = get_preferences()
     if len(prefs.root_paths) == 0:
     
-        default_root_paths = script_panel_extension_system.instance.get_default_root_paths()
+        default_root_paths = script_panel_extension_system.get_extension_cls().get_default_root_paths()
         for root_path in default_root_paths:
             item : ScriptPanel_RootPath = prefs.root_paths.add()
             item.dir_path = root_path

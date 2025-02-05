@@ -7,15 +7,23 @@ bl_info = {
     "description": "",
     "warning": "",
     "doc_url": "",
-    "category": "Rigging",
+    "category": "Interface",
 }
 
-from . import script_panel, script_panel_preferences
 
 def register():
-    script_panel_preferences.register()
+
+    from . import script_panel_extension_system
+    script_panel_extension_system.import_extensions()
+
+    from . import script_panel
     script_panel.register()
 
+
 def unregister():
+    from . import script_panel_extension_system
+    script_panel_extension_system.pop_extension_modules()
+    
+    from . import script_panel
     script_panel.unregister()
-    script_panel_preferences.unregister()
+

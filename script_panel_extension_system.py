@@ -13,15 +13,19 @@ class ModuleConstants:
     extension_file_prefix = "script_panel_ext_"
 
 
+def pop_extension_modules():
+    modules_to_pop = []
+    for mod_key in sys.modules.keys():
+        if mod_key.startswith(ModuleConstants.extension_file_prefix):
+            modules_to_pop.append(mod_key)
+
+    for mod_key in modules_to_pop:
+        sys.modules.pop(mod_key)
+
+
 def import_extensions(refresh=False):
     if refresh:
-        modules_to_pop = []
-        for mod_key in sys.modules.keys():
-            if mod_key.startswith(ModuleConstants.extension_file_prefix):
-                modules_to_pop.append(mod_key)
-
-        for mod_key in modules_to_pop:
-            sys.modules.pop(mod_key)
+        pop_extension_modules()
 
     # look through sys.path for extension modules
     modules_to_import = list()
@@ -48,17 +52,19 @@ def import_extensions(refresh=False):
             log.info("Imported extension: {}".format(module_import_str))
         except Exception as e:
             traceback.print_exc()
+    
+
+
+def get_extension_cls() -> script_panel_extension_interface.ScriptPanelExtension:
+
+    sub_classes = script_panel_extension_interface.ScriptPanelExtension.__subclasses__()
+    if sub_classes:
+        return sub_classes[0]()
+    
+    return script_panel_extension_interface.ScriptPanelExtension()
 
 
 try:
     import_extensions()
 except Exception as e:
     traceback.print_exc()
-
-extension_sub_classes = script_panel_extension_interface.ScriptPanelExtension.__subclasses__()
-if extension_sub_classes:
-    instance = extension_sub_classes[0]()  # type: script_panel_extension_interface.ScriptPanelExtension
-else:
-    instance = script_panel_extension_interface.ScriptPanelExtension()
-
-log.info("Extension class: {}".format(instance))
