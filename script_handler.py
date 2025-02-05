@@ -145,7 +145,7 @@ class ScriptHandler():
         self.active_root_dirs = root_dirs
         # don't reset self.expanded_dirs so we can keep the state when refreshing
 
-        local_config_path = os.path.join(os.getenv('APPDATA'), "script_panel_blender", "local_panel_config.json")
+        local_config_path = get_local_config_path()
 
         for root_dir in root_dirs:
             if self.primary_dir is None:
@@ -212,21 +212,19 @@ class ScriptHandler():
 
     def update_favorites(self):
         self.favorite_scripts = []
-        for root_path in self.active_root_dirs:
-            local_config_path = os.path.join(root_path, "local_config.json")
 
-            if not os.path.exists(local_config_path):
-                continue
-
+        config_json = {}
+        local_config_path = get_local_config_path()
+        if os.path.exists(local_config_path):
             with open(local_config_path, "r") as fp:
                 config_json = json.load(fp)
 
-            # get script instances for each favorite
-            for favorite in config_json.get(k.favorites, []):
-                script = self.get_script_inst_from_config_key(favorite)
-                if script:
-                    script.is_favorited = True
-                    self.favorite_scripts.append(script)
+        # get script instances for each favorite
+        for favorite in config_json.get(k.favorites, []):
+            script = self.get_script_inst_from_config_key(favorite)
+            if script:
+                script.is_favorited = True
+                self.favorite_scripts.append(script)
 
     def get_favorited_scripts(self):
         return self.favorite_scripts
@@ -253,6 +251,10 @@ class ScriptHandler():
         for script in self.scripts.values():
             if script.get_config_key() == path:
                 return script
+
+
+def get_local_config_path():
+    return os.path.join(os.getenv('APPDATA'), "script_panel_blender", "local_panel_config.json")
 
 
 def merge_jsons(json_paths):
