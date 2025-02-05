@@ -69,6 +69,7 @@ class Script():
 
         full_config_data[k.script_configs] = script_configs
 
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
         with open(config_path, "w") as fp:
             json.dump(full_config_data, fp, indent=2)
 
@@ -144,6 +145,8 @@ class ScriptHandler():
         self.active_root_dirs = root_dirs
         # don't reset self.expanded_dirs so we can keep the state when refreshing
 
+        local_config_path = os.path.join(os.getenv('APPDATA'), "script_panel_blender", "local_panel_config.json")
+
         for root_dir in root_dirs:
             if self.primary_dir is None:
                 self.primary_dir = root_dir
@@ -154,7 +157,6 @@ class ScriptHandler():
                 continue
             
             shared_config_path = os.path.join(root_dir, "shared_config.json")
-            local_config_path = os.path.join(root_dir, "local_config.json")
             combined_configs = merge_jsons((shared_config_path, local_config_path))
 
             # recalculate folder name since blender chucks an extra slash on a folder path
