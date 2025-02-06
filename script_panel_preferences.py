@@ -48,6 +48,11 @@ class ScriptPanel_Preferences(bpy.types.AddonPreferences):
         type=ScriptPanel_RootPath,
         )
     
+    external_editor_path: bpy.props.StringProperty(
+        name="External Code Editor",
+        subtype="FILE_PATH",
+        )
+    
     favorites_layout_horizontal: bpy.props.BoolProperty(
         name="Layout Horizontal",
         description="Put all the favorites in a single row, jumping to the next row at the threshold.\n(Disables the edit and favorite buttons. Functionallity can still be accessed via right click)",
@@ -117,6 +122,13 @@ def draw_preferences(layout):
             row.prop(root_path, "dir_path", text="")
             remove_op = row.operator(ScriptPanel_RemoveDirEntry.bl_idname, icon="X", text="")
             remove_op.idx = i
+
+    editing_header, editing_body = layout.panel("EditingPrefs", default_closed=True)
+    editing_header.label(text="Editing Prefs")
+
+    if editing_body:
+        editing_body.label(text="External Code Editor")
+        editing_body.prop(prefs, "external_editor_path", text="")
 
 
 def get_preferences() -> ScriptPanel_Preferences: 

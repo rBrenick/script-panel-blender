@@ -1,6 +1,7 @@
 import os
 import time
 import runpy
+import subprocess
 
 import bpy
 
@@ -103,7 +104,8 @@ class ScriptPanel_OpenScript(bpy.types.Operator):
     target_script_path: bpy.props.StringProperty()
 
     def execute(self, context):
-        open_script(self.target_script_path)
+        prefs = script_panel_preferences.get_preferences()
+        open_script(self.target_script_path, prefs.external_editor_path)
         return {"FINISHED"}
 
 
@@ -120,7 +122,14 @@ class ScriptPanel_OpenFolder(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def open_script(script_path):
+def open_script(script_path, external_editor_path=None):
+    if external_editor_path:
+        subprocess.Popen(f'{external_editor_path} "{script_path}"')
+    else:
+        open_script_in_blender(script_path)
+
+
+def open_script_in_blender(script_path):
     open_script_window()
 
     existing_text = None
