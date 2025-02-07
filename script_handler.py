@@ -180,7 +180,7 @@ class ScriptHandler():
                 if not self.expanded_dirs.get(display_relative_dir):
                     self.expanded_dirs[display_relative_dir] = default_expand_state
 
-                for script_file_name in files:
+                for script_file_name in sorted(files):
                     if ".py" not in script_file_name:
                         continue
 
